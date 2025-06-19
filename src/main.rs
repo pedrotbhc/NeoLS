@@ -13,15 +13,9 @@ struct Args {
     verbose: bool,
 }
 
-fn main() -> Result<(), io::Error> {
+fn main() {
     let args = Args::parse();
 
-    match (args.all, args.metadata, args.verbose) {
-        (true, true, true) => nls::list::list(args.all, args.metadata, args.verbose),
-        (true, true, false) => nls::list::list(args.all, args.metadata, args.verbose),
-        (true, false, false) => nls::list::list(args.all, args.metadata, args.verbose),
-        (false, false, false) => nls::list::list(args.all, args.metadata, args.verbose),
-        _ => todo!(),
-    }
+    nls::list::list(args.all, args.metadata, args.verbose);
 
 }
