@@ -1,45 +1,36 @@
 use std::fs;
 use std::io;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
+use std::path::Path;
+use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::MetadataExt;
 
 use colored::*;
-
-pub struct List;
-
-impl List {
-
-}
-
-pub fn list(show_all: bool, show_metadata: bool, verbose_mode: bool) -> io::Result<()> {
-    let list = fs::read_dir(".").unwrap();
-    for entry in list {
-        let entry = entry.unwrap();
-        let file_type = entry.file_type().unwrap();
-        match (show_all, show_metadata, verbose_mode) {
-            (true, true, true) => {
-                let metadata = fs::metadata(entry.path())?;
-                let size = metadata.len();
-                let type_file = entry.file_type();
-                let path = entry.path();
-                let perms = permissoes(path.to_str().unwrap())?;
-                match file_type {
-                    ft if ft.is_dir() => {
-                        println!("{} {} {}", perms.yellow(), formatar_tamanho(size), entry.file_name().to_string_lossy().blue());
-                    },
-                    ft if ft.is_file() => {
-                        println!("{} {} {}", perms.yellow(), formatar_tamanho(size), entry.file_name().to_string_lossy().red());
-                    },
-                    _ => todo!(),
-                }
-            },
-            (true, true, false) => {
-
-            },
-            (true, false, false) => {
-
-            },
-            (false, false, false) => {
+use users::get_user_by_uid;
     
+pub fn listar(_show_all: bool, _show_long: bool) -> io::Result<()> {
+    let list = fs::read_dir(".")?;
+    for entry_res in list {
+        let entry = entry_res?;
+        let metadata = fs::metadata(entry.path())?;
+        let byte_size = metadata.len();
+        let size = tamanho(byte_size);
+        let file_type = entry.file_type()?;
+        let path = entry.path();
+        let perms = permissoes(path.to_str().unwrap())?;
+        match file_type {
+            ft if ft.is_dir() => {
+                println!("{} {} {} {}",
+                    perms.yellow(),
+                    dono(&path).unwrap_or("?".to_string()).to_string(),
+                    size,
+                    entry.file_name().to_string_lossy().blue().bold());
+            },
+            ft if ft.is_file() => {
+		println!("{} {} {} {}",
+                    perms.yellow(),
+                    dono(&path).unwrap_or("?".to_string()).to_string(),
+                    size,
+                    entry.file_name().to_string_lossy());
             },
             _ => todo!(),
         }
@@ -47,7 +38,7 @@ pub fn list(show_all: bool, show_metadata: bool, verbose_mode: bool) -> io::Resu
     Ok(())
 }
 
-fn formatar_tamanho(bytes: u64) -> String {
+fn tamanho(bytes: u64) -> String {
     let mut size = bytes as f64;
     let units = ["B", "KB", "MB", "GB", "TB"];
     let mut i = 0;
@@ -55,7 +46,7 @@ fn formatar_tamanho(bytes: u64) -> String {
         size /= 1024.0;
         i += 1;
     }
-    format!("{:.2   } {}", size, units[i])
+    format!("{:.2} {}", size, units[i])
 }
 
 fn permissoes(path: &str) -> std::io::Result<String> {
@@ -76,4 +67,12 @@ fn permissoes(path: &str) -> std::io::Result<String> {
         perms.push(if (mode >> i) & 0b001 != 0 { 'x' } else { '-' });
     }
     Ok(perms)
+}
+
+fn dono(path: &Path) -> Option<String> {
+    let metadata = fs::metadata(&path).ok()?;
+    let uid = metadata.uid();
+    let user = get_user_by_uid(uid)?;
+
+    Some(user.name().to_string_lossy().into_owned())
 }
