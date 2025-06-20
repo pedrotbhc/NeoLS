@@ -16,6 +16,6 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    nls::list::list(args.all, args.metadata, args.verbose);
+    nls::list::listar(args.all, args.verbose);
 
 }
